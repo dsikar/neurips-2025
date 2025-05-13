@@ -156,9 +156,12 @@ def drive_figure_eight(world, vehicle, waypoints, rgb_camera, config):
 
     start_time = datetime.now()
     try:
-        for i, wp in enumerate(waypoints):
+        # Start from waypoint 2 (index 1)
+        for i in range(1, len(waypoints)):
+            wp = waypoints[i]  # Target W_{i+1} (e.g., W_2 for i=1)
             print(f"Current target waypoint {i + 1}/{len(waypoints)}: {wp.transform.location}")
             world.debug.draw_point(wp.transform.location, size=0.2, color=carla.Color(255, 0, 0), life_time=5.0)
+            min_path_distance = float('inf')
             while True:
                 control = compute_control(vehicle, wp, target_speed)
                 vehicle.apply_control(control)
@@ -166,14 +169,14 @@ def drive_figure_eight(world, vehicle, waypoints, rgb_camera, config):
                 if latest_rgb[0] is not None:
                     process_images(latest_rgb[0], config, control.steer, image_counter)
                 current_location = vehicle.get_transform().location
+                # Compute perpendicular distance to W_i-W_{i+1} (e.g., W_1-W_2 for W_2)
+                #path_distance = get_perpendicular_distance(current_location, waypoints[i-1], wp)
+                # min_path_distance = min(min_path_distance, path_distance)
                 distance_to_waypoint = current_location.distance(wp.transform.location)
-                if distance_to_waypoint < 1.0:  # Updated threshold
-                    # Compute distance to path when reaching waypoint
-                    if i < len(waypoints) - 1:
-                        path_distance = get_perpendicular_distance(current_location, wp, waypoints[i + 1])
-                    else:
-                        path_distance = get_perpendicular_distance(current_location, wp, waypoints[i - 1])
+                if distance_to_waypoint < 0.5:
+                    path_distance = get_perpendicular_distance(current_location, waypoints[i-1], wp)
                     ground_truth_distances.append(path_distance)
+                    print(f"Distance to waypoint {i + 1}: {path_distance:.4f} m")
                     break
                 if world.get_settings().synchronous_mode:
                     world.tick()
@@ -186,8 +189,7 @@ def drive_figure_eight(world, vehicle, waypoints, rgb_camera, config):
     finally:
         end_time = datetime.now()
         rgb_camera.stop()
-        # Save ground truth distances
-        with open(os.path.join(output_dir, 'ground_truth_distances_01.txt'), 'w') as f:
+        with open(os.path.join(output_dir, 'ground_truth_distances.txt'), 'w') as f:
             for dist in ground_truth_distances:
                 f.write(f"{dist:.4f}\n")
         with open(os.path.join(output_dir, 'log.txt'), 'w') as f:
