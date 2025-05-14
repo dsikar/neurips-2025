@@ -106,19 +106,18 @@ def process_images(rgb_image, config, steering_angle, image_counter=[0]):
     rgb_array = np.reshape(rgb_array, (rgb_image.height, rgb_image.width, 4))[:, :, :3]
     rgb_array = rgb_array[:, :, [2, 1, 0]]  # Convert BGR to RGB
 
-    # NO MARKERS
-    # # Add fiducial markers
-    # marker_size = 20
-    # marker_color = [255, 0, 0]  # Red in RGB
-    # offset = 90  # Pixels from left/right edges
-    # bottom_y = rgb_image.height - marker_size  # Start at bottom of image
+    # Add fiducial markers
+    marker_size = 20
+    marker_color = [255, 0, 0]  # Red in RGB
+    offset = 90  # Pixels from left/right edges
+    bottom_y = rgb_image.height - marker_size  # Start at bottom of image
 
-    # # Left marker
-    # rgb_array[bottom_y:bottom_y + marker_size, offset:offset + marker_size, :] = marker_color
+    # Left marker
+    rgb_array[bottom_y:bottom_y + marker_size, offset:offset + marker_size, :] = marker_color
 
-    # # Right marker
-    # right_x = rgb_image.width - offset - marker_size
-    # rgb_array[bottom_y:bottom_y + marker_size, right_x:right_x + marker_size, :] = marker_color
+    # Right marker
+    right_x = rgb_image.width - offset - marker_size
+    rgb_array[bottom_y:bottom_y + marker_size, right_x:right_x + marker_size, :] = marker_color
 
     # Save the image with steering angle
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -131,53 +130,58 @@ def process_images(rgb_image, config, steering_angle, image_counter=[0]):
 
     return image_counter[0]
 
+def get_perpendicular_distance(vehicle_location, wp1, wp2):
+    """Calculate perpendicular distance from vehicle_location to line segment wp1-wp2."""
+    p = np.array([vehicle_location.x, vehicle_location.y])
+    a = np.array([wp1.transform.location.x, wp1.transform.location.y])
+    b = np.array([wp2.transform.location.x, wp2.transform.location.y])
+    ab = b - a
+    ap = p - a
+    ab_norm = np.dot(ab, ab)
+    if ab_norm == 0:
+        return np.linalg.norm(p - a)
+    t = np.dot(ap, ab) / ab_norm
+    t = max(0, min(1, t))
+    closest = a + t * ab
+    return np.linalg.norm(p - closest)
+
 def drive_figure_eight(world, vehicle, waypoints, rgb_camera, config):
-    """Drive the vehicle along the figure-8 track and record camera data with waypoint lines."""
     output_dir = config['output']['directory']
     target_speed = config['simulation']['target_speed']
-    image_width = config['camera']['image_width']
-    image_height = config['camera']['image_height']
-    fov = config['camera']['fov']
-    cam_pos = config['camera']['position']
-    cam_rot = config['camera']['rotation']
-    
     os.makedirs(output_dir, exist_ok=True)
     image_counter = [0]
-
-    # Buffer to hold latest image
     latest_rgb = [None]
     rgb_camera.listen(lambda image: latest_rgb.__setitem__(0, image))
+    ground_truth_distances = []
 
     start_time = datetime.now()
     try:
-        for i, wp in enumerate(waypoints):
+        # Start from waypoint 2 (index 1)
+        for i in range(1, len(waypoints)):
+            wp = waypoints[i]  # Target W_{i+1} (e.g., W_2 for i=1)
             print(f"Current target waypoint {i + 1}/{len(waypoints)}: {wp.transform.location}")
-            world.debug.draw_point(
-                wp.transform.location,
-                size=0.2,
-                color=carla.Color(255, 0, 0),
-                life_time=5.0
-            )
-
+            world.debug.draw_point(wp.transform.location, size=0.2, color=carla.Color(255, 0, 0), life_time=5.0)
+            min_path_distance = float('inf')
             while True:
                 control = compute_control(vehicle, wp, target_speed)
                 vehicle.apply_control(control)
                 set_spectator_camera_following_car(world, vehicle)
-
-                # Process image if available
                 if latest_rgb[0] is not None:
                     process_images(latest_rgb[0], config, control.steer, image_counter)
-
                 current_location = vehicle.get_transform().location
+                # Compute perpendicular distance to W_i-W_{i+1} (e.g., W_1-W_2 for W_2)
+                #path_distance = get_perpendicular_distance(current_location, waypoints[i-1], wp)
+                # min_path_distance = min(min_path_distance, path_distance)
                 distance_to_waypoint = current_location.distance(wp.transform.location)
-                if distance_to_waypoint < 2.0:
+                if distance_to_waypoint < 0.5:
+                    path_distance = get_perpendicular_distance(current_location, waypoints[i-1], wp)
+                    ground_truth_distances.append(path_distance)
+                    print(f"Distance to waypoint {i + 1}: {path_distance:.4f} m")
                     break
-
                 if world.get_settings().synchronous_mode:
                     world.tick()
                 else:
                     time.sleep(0.1)
-
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
         control = carla.VehicleControl(throttle=0, brake=1)
@@ -185,15 +189,16 @@ def drive_figure_eight(world, vehicle, waypoints, rgb_camera, config):
     finally:
         end_time = datetime.now()
         rgb_camera.stop()
+        with open(os.path.join(output_dir, 'ground_truth_distances.txt'), 'w') as f:
+            for dist in ground_truth_distances:
+                f.write(f"{dist:.4f}\n")
         with open(os.path.join(output_dir, 'log.txt'), 'w') as f:
-            f.write(f"Simulation Log with waypoint lines and fiducial markers:\n")
             f.write(f"Start Time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"End Time: {end_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Total Images Recorded: {image_counter[0]}\n")
-            f.write(f"Camera Position: x={cam_pos['x']}, y={cam_pos['y']}, z={cam_pos['z']}\n")
-            f.write(f"Camera Rotation: pitch={cam_rot['pitch']}, yaw={cam_rot['yaw']}, roll={cam_rot['roll']}\n")
-            f.write(f"Camera Parameters: resolution={image_width}x{image_height}, fov={fov}\n")
-        print(f"Simulation ended. Recorded {image_counter[0]} images. Log saved to {output_dir}/log.txt")
+            f.write(f"Ground Truth Distances Saved: {len(ground_truth_distances)}\n")
+        print(f"Simulation ended. Recorded {image_counter[0]} images, {len(ground_truth_distances)} distances.")
+    return ground_truth_distances
 
 def draw_permanent_waypoint_lines(world, waypoints, color=carla.Color(0, 255, 0), thickness=2, life_time=0):
     """
