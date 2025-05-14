@@ -190,14 +190,14 @@ class CarlaSteering:
         vehicle_config = self.config['vehicle']
         # waypoints = self.world.get_map().generate_waypoints(1.0)
         # self.waypoints = helpers.get_town04_figure8_waypoints(self.world, lane_id=-2) 
-        route_waypoints = [w for w in self.waypoints if w.road_id == vehicle_config['spawn_road_id'] 
-                         and w.lane_id == vehicle_config['spawn_lane_id']]
-        if not route_waypoints:
-            raise ValueError(f"Could not find waypoints for road {vehicle_config['spawn_road_id']}, "
-                           f"lane {vehicle_config['spawn_lane_id']}")
+        # route_waypoints = [w for w in self.waypoints if w.road_id == vehicle_config['spawn_road_id'] 
+        #                  and w.lane_id == vehicle_config['spawn_lane_id']]
+        # if not route_waypoints:
+        #     raise ValueError(f"Could not find waypoints for road {vehicle_config['spawn_road_id']}, "
+        #                    f"lane {vehicle_config['spawn_lane_id']}")
         
         # Get spawn point
-        first_waypoint = route_waypoints[0]
+        first_waypoint = self.waypoints[0]
         spawn_location = first_waypoint.transform.location
         spawn_location.z += vehicle_config['spawn_height_offset']
         spawn_point = carla.Transform(spawn_location, first_waypoint.transform.rotation)
@@ -384,19 +384,22 @@ class CarlaSteering:
     #         if hasattr(self, 'vehicle'):
     #             self.vehicle.destroy()
 
-
-
     def run(self):
         """Main control loop with waypoint distance computation, exiting after all waypoints."""
+        try:
+            output_dir = self.config['output']['directory']
+            os.makedirs(output_dir, exist_ok=True)
+        except (KeyError, OSError) as e:
+            print(f"Error setting up output directory: {e}")
+            output_dir = None
+
+        self_driving_distances = [0.0]  # W_1 distance
+        current_wp_idx = 1  # Start at W_2
+
         try:
             self.setup_vehicle()
             print("Vehicle and sensors initialized. Starting control loop...")
             
-            self_driving_distances = []
-            current_wp_idx = 0
-            output_dir = self.config['output']['directory']
-            os.makedirs(output_dir, exist_ok=True)
-
             while current_wp_idx < len(self.waypoints):
                 while not self.image_queue.empty():
                     _ = self.image_queue.get()
@@ -411,15 +414,12 @@ class CarlaSteering:
                     set_spectator_camera_following_car(self.world, self.vehicle)
                     self.display_images()
                     
-                    # Compute distance to current waypoint
+                    # Compute distance to target waypoint
                     vehicle_location = self.vehicle.get_transform().location
-                    nearest_idx, distance_to_waypoint = self.find_nearest_waypoint(vehicle_location)
-                    if nearest_idx >= current_wp_idx and distance_to_waypoint < 1.0 and current_wp_idx < len(self.waypoints):
-                        # Compute perpendicular distance to path
-                        if current_wp_idx < len(self.waypoints) - 1:
-                            path_distance = self.get_perpendicular_distance(vehicle_location, self.waypoints[current_wp_idx], self.waypoints[current_wp_idx + 1])
-                        else:
-                            path_distance = self.get_perpendicular_distance(vehicle_location, self.waypoints[current_wp_idx], self.waypoints[current_wp_idx - 1])
+                    distance_to_waypoint = vehicle_location.distance(self.waypoints[current_wp_idx].transform.location)
+                    if distance_to_waypoint < 0.5:
+                        # Compute perpendicular distance to W_i-W_{i+1} (e.g., W_1-W_2 for W_2)
+                        path_distance = self.get_perpendicular_distance(vehicle_location, self.waypoints[current_wp_idx - 1], self.waypoints[current_wp_idx])
                         self_driving_distances.append(path_distance)
                         print(f"Reached waypoint {current_wp_idx + 1}/{len(self.waypoints)}, path distance: {path_distance:.4f}")
                         current_wp_idx += 1
@@ -439,11 +439,13 @@ class CarlaSteering:
             if hasattr(self, 'vehicle'):
                 self.vehicle.destroy()
             
-            # Save self-driving distances
-            with open(os.path.join(output_dir, 'self_driving_distances_01.txt'), 'w') as f:
-                for dist in self_driving_distances:
-                    f.write(f"{dist:.4f}\n")
-            print(f"Self-driving ended. Recorded {len(self_driving_distances)} distances.")
+            if output_dir and self_driving_distances:
+                with open(os.path.join(output_dir, 'self_driving_distances_01.txt'), 'w') as f:
+                    for dist in self_driving_distances:
+                        f.write(f"{dist:.4f}\n")
+                print(f"Self-driving ended. Recorded {len(self_driving_distances)} distances.")
+            else:
+                print("Self-driving ended. No distances saved due to invalid output directory or no distances recorded.")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run CARLA self-driving simulation.')
