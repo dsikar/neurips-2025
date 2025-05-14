@@ -1,7 +1,7 @@
-# CNN self-driving car from config, with fiducial markers
+# CNN self-driving car from config, without fiducial markers
 # Mods: 
 # 1. Add road segmentation
-# 2. Add fiducial markers
+# 2. Remove fiducial markers
 
 #########
 # MODEL #
@@ -143,7 +143,7 @@ class CarlaSteering:
         sim_config = config['simulation']
         self.client = carla.Client(sim_config['server_host'], sim_config['server_port'])
         self.client.set_timeout(10.0)
-        self.world = self.client.get_world()        
+        self.world = self.client.get_world()
 
         # Set synchronous mode with fixed time step
         settings = self.world.get_settings()
@@ -198,6 +198,7 @@ class CarlaSteering:
         #                    f"lane {vehicle_config['spawn_lane_id']}")
         
         # Get spawn point
+
         first_waypoint = self.waypoints[0]
         spawn_location = first_waypoint.transform.location
         spawn_location.z += vehicle_config['spawn_height_offset']
@@ -238,18 +239,18 @@ class CarlaSteering:
         img = img[:, :, :3]  # Remove alpha channel
         img = img[:, :, [2, 1, 0]]  # Convert BGR to RGB
         
-        # Add fiducial markers
-        marker_size = 20
-        marker_color = [255, 0, 0]  # Red in RGB
-        offset = 90  # Pixels from left/right edges
-        bottom_y = self.image_height - marker_size  # Start at bottom of image
+        # # Add fiducial markers
+        # marker_size = 20
+        # marker_color = [255, 0, 0]  # Red in RGB
+        # offset = 90  # Pixels from left/right edges
+        # bottom_y = self.image_height - marker_size  # Start at bottom of image
 
-        # Left marker
-        img[bottom_y:bottom_y + marker_size, offset:offset + marker_size, :] = marker_color
+        # # Left marker
+        # img[bottom_y:bottom_y + marker_size, offset:offset + marker_size, :] = marker_color
 
-        # Right marker
-        right_x = self.image_width - offset - marker_size
-        img[bottom_y:bottom_y + marker_size, right_x:right_x + marker_size, :] = marker_color
+        # # Right marker
+        # right_x = self.image_width - offset - marker_size
+        # img[bottom_y:bottom_y + marker_size, right_x:right_x + marker_size, :] = marker_color
         
         # Store in queue
         self.image_queue.put(img)
@@ -441,7 +442,7 @@ class CarlaSteering:
                 self.vehicle.destroy()
             
             if output_dir and self_driving_distances:
-                with open(os.path.join(output_dir, 'self_driving_distances_01.txt'), 'w') as f:
+                with open(os.path.join(output_dir, 'self_driving_distances_02.txt'), 'w') as f:
                     for dist in self_driving_distances:
                         f.write(f"{dist:.4f}\n")
                 print(f"Self-driving ended. Recorded {len(self_driving_distances)} distances.")
@@ -465,6 +466,6 @@ if __name__ == '__main__':
 
 # Example usage:
 # NB We are rerunning the same trained model on a different dataset, where the ground truth was recorded ()
-# python 08-self-driving-from-config_01.py \
-# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_01.json \
-# --model /home/daniel/git/neurips-2025/scripts/best_steering_model_20250513-093008.pth 
+# python 08-self-driving-from-config_02.py \
+# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_02.json \
+# --model /home/daniel/git/neurips-2025/scripts/best_steering_model_20250514-122921.pth
