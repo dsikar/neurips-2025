@@ -106,18 +106,18 @@ def process_images(rgb_image, config, steering_angle, image_counter=[0]):
     rgb_array = np.reshape(rgb_array, (rgb_image.height, rgb_image.width, 4))[:, :, :3]
     rgb_array = rgb_array[:, :, [2, 1, 0]]  # Convert BGR to RGB
 
-    # Add fiducial markers
-    marker_size = 20
-    marker_color = [255, 0, 0]  # Red in RGB
-    offset = 90  # Pixels from left/right edges
-    bottom_y = rgb_image.height - marker_size  # Start at bottom of image
+    # # Add fiducial markers
+    # marker_size = 20
+    # marker_color = [255, 0, 0]  # Red in RGB
+    # offset = 90  # Pixels from left/right edges
+    # bottom_y = rgb_image.height - marker_size  # Start at bottom of image
 
-    # Left marker
-    rgb_array[bottom_y:bottom_y + marker_size, offset:offset + marker_size, :] = marker_color
+    # # Left marker
+    # rgb_array[bottom_y:bottom_y + marker_size, offset:offset + marker_size, :] = marker_color
 
-    # Right marker
-    right_x = rgb_image.width - offset - marker_size
-    rgb_array[bottom_y:bottom_y + marker_size, right_x:right_x + marker_size, :] = marker_color
+    # # Right marker
+    # right_x = rgb_image.width - offset - marker_size
+    # rgb_array[bottom_y:bottom_y + marker_size, right_x:right_x + marker_size, :] = marker_color
 
     # Save the image with steering angle
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -189,7 +189,7 @@ def drive_figure_eight(world, vehicle, waypoints, rgb_camera, config):
     finally:
         end_time = datetime.now()
         rgb_camera.stop()
-        with open(os.path.join(output_dir, 'ground_truth_distances.txt'), 'w') as f:
+        with open(os.path.join(output_dir, 'ground_truth_distances_02.txt'), 'w') as f:
             for dist in ground_truth_distances:
                 f.write(f"{dist:.4f}\n")
         with open(os.path.join(output_dir, 'log.txt'), 'w') as f:
