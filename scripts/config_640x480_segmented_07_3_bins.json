@@ -1,0 +1,42 @@
+{
+    "simulation": {
+      "server_host": "localhost",
+      "server_port": 2000,
+      "town": "Town04",
+      "synchronous_mode": true,
+      "fixed_delta_seconds": 0.05,
+      "fixed_delta_seconds_data_gen": 0.05,
+      "fixed_delta_seconds_self_drive": 0.1,      
+      "target_speed": 10
+    },
+    "vehicle": {
+      "model": "vehicle.tesla.model3",
+      "spawn_height_offset": 2.0,
+      "spawn_road_id": 42,
+      "spawn_lane_id": -2      
+    },
+    "camera": {
+      "image_width": 640,
+      "image_height": 480,
+      "fov": 90,
+      "position": {
+        "x": 1.5,
+        "y": 0.0,
+        "z": 1.8
+      },
+      "rotation": {
+        "pitch": -5.0,
+        "yaw": 0.0,
+        "roll": 0.0
+      }
+    },
+    "image_processing": {
+        "crop_top": 210,
+        "crop_bottom": 480,
+        "resize_width": 200,
+        "resize_height": 66	
+      },    
+    "output": {
+      "directory": "carla_dataset_640x480_07_3_bins"
+    }
+  }
