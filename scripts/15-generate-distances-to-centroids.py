@@ -94,13 +94,13 @@ python 15-generate-distances-to-centroids.py \
 
 # 5 bins
 python 15-generate-distances-to-centroids.py \
-    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/5_bin_softmax_outputs.npy \
-    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/5_bins_centroids.npy \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06/5_bin_softmax_outputs.npy \
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06/5_bins_centroids.npy \
     --bins 5
 
 # 3 bins
 python 15-generate-distances-to-centroids.py \
-    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/3_bin_softmax_outputs.npy \
-    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/3_bins_centroids.npy \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bin_softmax_outputs.npy \
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bins_centroids.npy \
     --bins 3
 """        
