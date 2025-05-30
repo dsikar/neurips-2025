@@ -193,7 +193,7 @@ def main(args):
     output_file = os.path.join(data_dir, args.filename)
     np.save(output_file, results)
     print(f"Saved predictions to {output_file}")
-    
+     
     # Print summary
     correct = np.sum(results[:, args.bins] == results[:, args.bins + 1])
     accuracy = correct / len(image_files) if image_files else 0.0
@@ -201,15 +201,15 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Predict steering classes for dataset images.')
-    parser.add_argument('--config', type=str, default='/home/daniel/git/neurips-2025/scripts/config_640x480_segmented_06.json',
+    parser.add_argument('--config', type=str, default='/home/daniel/git/neurips-2025/scripts/config_640x480_segmented_07_3_bins.json',
                         help='Path to the configuration JSON file (default: config.json)')
-    parser.add_argument('--model', type=str, default='/home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_5_bins_20250525-204108.pth',
+    parser.add_argument('--model', type=str, default='/home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_3_bins_20250525-204246.pth',
                         help='Path to the trained model file')
-    parser.add_argument('--data_dir', type=str, default='/home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06',
+    parser.add_argument('--data_dir', type=str, default='/home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins',
                         help='Path to the dataset directory containing .jpg images')
-    parser.add_argument('--filename', type=str, default='5_bin_softmax_outputs.npy',
+    parser.add_argument('--filename', type=str, default='3_bin_softmax_outputs.npy',
                         help='Output .npy filename (default: 15_bin_softmax_outputs.npy)')
-    parser.add_argument('--bins', type=int, default=5, choices=[3, 5, 15],
+    parser.add_argument('--bins', type=int, default=3, choices=[3, 5, 15],
                         help='Number of steering bins (3, 5, or 15; default: 15)')
     args = parser.parse_args()
 
@@ -219,6 +219,10 @@ if __name__ == '__main__':
         print(f"An error occurred: {e}")
 
 """
+################################
+# Original unbalanced datasets #
+################################
+
 # 15 bins
 python 13-generate-softmax-outputs.py \
 --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_05.json \
@@ -235,12 +239,40 @@ python 13-generate-softmax-outputs.py \
 --filename 5_bin_softmax_outputs.npy \
 --bins 5
 
-# For 3 bins
+# 3 bins
 python script.py \
 python 13-generate-softmax-outputs.py \
 --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_07_3_bins.json \
 --model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_3_bins_20250525-204246.pth \
---data_dir /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06 \
+--data_dir /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins \
 --filename 3_bin_softmax_outputs.npy \
 --bins 3
+
+#####################
+# Balanced datasets #
+#####################
+
+# 15 bins
+python 13-generate-softmax-outputs.py \
+--config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_05.json \
+--model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_15_bins_balanced_20250529-211117.pth \
+--data_dir /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05_balanced \
+--filename 15_bin_balanced_softmax_outputs.npy \
+--bins 15 
+
+# 5 bins
+python 13-generate-softmax-outputs.py \
+--config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_06.json \
+--model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_5_bins_balanced_20250529-211142.pth \
+--data_dir /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06_balanced \
+--filename 5_bin_balanced_softmax_outputs.npy \
+--bins 5 
+
+# 3 bins
+python 13-generate-softmax-outputs.py \
+--config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_07_3_bins.json \
+--model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_3_bins_balanced_20250529-212449.pth \
+--data_dir /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins_balanced \
+--filename 3_bin_balanced_softmax_outputs.npy \
+--bins 3 
 """
