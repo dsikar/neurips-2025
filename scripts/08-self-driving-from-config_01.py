@@ -135,10 +135,12 @@ from config_utils import load_config
 import argparse
 
 class CarlaSteering:
-    def __init__(self, config, model_path='model.pth'):
+    def __init__(self, config, model_path='model.pth', distances_file='self_driving_distances_05.txt', fiducial_markers=False):
         self.config = config
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        
+        self.fiducial_markers = fiducial_markers
+        self.distances_file = distances_file
+
         # Load simulation settings
         sim_config = config['simulation']
         self.client = carla.Client(sim_config['server_host'], sim_config['server_port'])
@@ -238,18 +240,19 @@ class CarlaSteering:
         img = img[:, :, :3]  # Remove alpha channel
         img = img[:, :, [2, 1, 0]]  # Convert BGR to RGB
         
-        # Add fiducial markers
-        marker_size = 20
-        marker_color = [255, 0, 0]  # Red in RGB
-        offset = 90  # Pixels from left/right edges
-        bottom_y = self.image_height - marker_size  # Start at bottom of image
+        if self.fiducial_markers:
+            # Add fiducial markers
+            marker_size = 20
+            marker_color = [255, 0, 0]  # Red in RGB
+            offset = 90  # Pixels from left/right edges
+            bottom_y = self.image_height - marker_size  # Start at bottom of image
 
-        # Left marker
-        img[bottom_y:bottom_y + marker_size, offset:offset + marker_size, :] = marker_color
+            # Left marker
+            img[bottom_y:bottom_y + marker_size, offset:offset + marker_size, :] = marker_color
 
-        # Right marker
-        right_x = self.image_width - offset - marker_size
-        img[bottom_y:bottom_y + marker_size, right_x:right_x + marker_size, :] = marker_color
+            # Right marker
+            right_x = self.image_width - offset - marker_size
+            img[bottom_y:bottom_y + marker_size, right_x:right_x + marker_size, :] = marker_color
         
         # Store in queue
         self.image_queue.put(img)
@@ -262,9 +265,10 @@ class CarlaSteering:
         cropped = img[self.crop_top:self.crop_bottom, :]
         resized = cv2.resize(cropped, (self.resize_width, self.resize_height))
         
-        # Convert to YUV
+        # Convert to YUV, converting straight from RGV, out of step with training (commit 30db8995
         yuv = cv2.cvtColor(resized, cv2.COLOR_RGB2YUV)
-        self.preprocessed_img = yuv.copy()
+        # save yuv for display
+        cv2.imwrite("inference_debug_yuv_inference.jpg", yuv)  # Uncomment to save for debugging
         
         # Prepare for PyTorch
         yuv = yuv.transpose((2, 0, 1))
@@ -441,7 +445,7 @@ class CarlaSteering:
                 self.vehicle.destroy()
             
             if output_dir and self_driving_distances:
-                with open(os.path.join(output_dir, 'self_driving_distances_01.txt'), 'w') as f:
+                with open(os.path.join(output_dir, self.distances_file), 'w') as f:
                     for dist in self_driving_distances:
                         f.write(f"{dist:.4f}\n")
                 print(f"Self-driving ended. Recorded {len(self_driving_distances)} distances.")
@@ -454,17 +458,30 @@ if __name__ == '__main__':
                         help='Path to the configuration JSON file (default: config.json)')
     parser.add_argument('--model', type=str, default='model.pth', 
                         help='Path to the trained model file (default: model.pth)')
+    parser.add_argument('--distance_filename', type=str, default='self_driving_distances_01.txt', 
+                        help='Path to the distances file (default: self_driving_distances_01.txt)') 
+    parser.add_argument('--fiducial_markers', action='store_true',
+                        help='Use fiducial markers for navigation (default: False)')
     args = parser.parse_args()
-
     try:
         config = load_config(args.config)
-        controller = CarlaSteering(config, model_path=args.model)
+        controller = CarlaSteering(config, model_path=args.model, distances_file=args.distance_filename, fiducial_markers=args.fiducial_markers)
         controller.run()
     except Exception as e:
         print(f"An error occurred: {e}")
 
 # Example usage:
-# NB We are rerunning the same trained model on a different dataset, where the ground truth was recorded ()
+
+# With fiducial markers:
+# python 08-self-driving-from-config_01.py \
+# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_02.json \
+# --model /home/daniel/git/neurips-2025/scripts/best_steering_model_20250513-093008.pth \
+# --distance_filename RegCNNContUnbalancedFiducials_self_driving_distances.txt \
+# --fiducial_markers True
+
+# Without fiducial markers:
 # python 08-self-driving-from-config_01.py \
 # --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_01.json \
-# --model /home/daniel/git/neurips-2025/scripts/best_steering_model_20250513-093008.pth 
+# --model /home/daniel/git/neurips-2025/scripts/best_steering_model_20250514-122921.pth \
+# --distance_filename RegCNNContUnbalancedFiducials_self_driving_distances.txt \
+# --fiducial_markers False
