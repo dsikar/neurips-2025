@@ -138,10 +138,11 @@ from config_utils import load_config
 import argparse
 
 class CarlaSteering:
-    def __init__(self, config, model_path='model.pth'):
+    def __init__(self, config, model_path='model.pth', distances_file='self_driving_distances_06.txt'):
         self.config = config
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        
+        self.distances_file = distances_file
+
         # Load simulation settings
         sim_config = config['simulation']
         self.client = carla.Client(sim_config['server_host'], sim_config['server_port'])
@@ -418,7 +419,7 @@ class CarlaSteering:
                 self.vehicle.destroy()
             
             if output_dir and self_driving_distances:
-                with open(os.path.join(output_dir, 'self_driving_distances_06.txt'), 'w') as f:
+                with open(os.path.join(output_dir, self.distances_file), 'w') as f:
                     for dist in self_driving_distances:
                         f.write(f"{dist:.4f}\n")
                 print(f"Self-driving ended. Recorded {len(self_driving_distances)} distances.")
@@ -431,11 +432,13 @@ if __name__ == '__main__':
                         help='Path to the configuration JSON file (default: config.json)')
     parser.add_argument('--model', type=str, default='model.pth', 
                         help='Path to the trained model file (default: model.pth)')
+    parser.add_argument('--distance_filename', type=str, default='self_driving_distances_06_5_bins.txt', 
+                        help='Path to the distances file (default: self_driving_distances_06_5_bins.txt)')    
     args = parser.parse_args()
 
     try:
         config = load_config(args.config)
-        controller = CarlaSteering(config, model_path=args.model)
+        controller = CarlaSteering(config, model_path=args.model, distances_file=args.distance_filename)
         controller.run()
     except Exception as e:
         print(f"An error occurred: {e}")
