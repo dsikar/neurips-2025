@@ -445,14 +445,15 @@ if __name__ == '__main__':
 
 # Example usage:
 # NB We are rerunning the same trained model on a different dataset, where the ground truth was recorded ()
-# unbalanced
-# python 08-self-driving-from-config_06_5_bins.py \
-# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_06.json \
-# --model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_5_bins_20250525-204108.pth \
-# --distance_filename ClsCNN5binUnbalanced_self_driving_distances.txt
 
 # balanced
 # python 08-self-driving-from-config_06_5_bins.py \
 # --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_06.json \
 # --model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_5_bins_balanced_20250529-211142.pth \
 # --distance_filename ClsCNN5binBalanced_self_driving_distances.txt
+
+# unbalanced
+# python 08-self-driving-from-config_06_5_bins.py \
+# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_06.json \
+# --model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_5_bins_20250525-204108.pth \
+# --distance_filename ClsCNN5binUnbalanced_self_driving_distances.txt
