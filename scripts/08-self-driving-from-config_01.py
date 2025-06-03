@@ -267,6 +267,10 @@ class CarlaSteering:
         
         # Convert to YUV, converting straight from RGV, out of step with training (commit 30db8995
         yuv = cv2.cvtColor(resized, cv2.COLOR_RGB2YUV)
+
+        # ADD THIS LINE - Save the preprocessed image for display
+        self.preprocessed_img = yuv.copy()   
+             
         # save yuv for display
         cv2.imwrite("inference_debug_yuv_inference.jpg", yuv)  # Uncomment to save for debugging
         
@@ -474,14 +478,13 @@ if __name__ == '__main__':
 
 # With fiducial markers:
 # python 08-self-driving-from-config_01.py \
-# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_02.json \
+# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_01.json \
 # --model /home/daniel/git/neurips-2025/scripts/best_steering_model_20250513-093008.pth \
 # --distance_filename RegCNNContUnbalancedFiducials_self_driving_distances.txt \
-# --fiducial_markers True
+# --fiducial_markers
 
 # Without fiducial markers:
 # python 08-self-driving-from-config_01.py \
-# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_01.json \
+# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_02.json \
 # --model /home/daniel/git/neurips-2025/scripts/best_steering_model_20250514-122921.pth \
-# --distance_filename RegCNNContUnbalancedFiducials_self_driving_distances.txt \
-# --fiducial_markers False
+# --distance_filename RegCNNContUnbalanced_self_driving_distances.txt
