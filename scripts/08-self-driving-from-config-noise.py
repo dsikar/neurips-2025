@@ -177,6 +177,7 @@ class CarlaSteering:
         
         self.image_queue = queue.Queue()
         self.current_image = None
+        self.prediction_data = []  # List to store (softmax_output, predicted_class) tuples
         
     def setup_vehicle(self):
         """Spawn and setup the ego vehicle with sensors"""
@@ -282,6 +283,9 @@ class CarlaSteering:
         steering_angle = np.clip(steering_angle, -self.max_steering_angle, self.max_steering_angle)
         self.last_steering = steering_angle
         
+        # Store prediction data (convert tensor to numpy for storage)
+        self.prediction_data.append((class_probs.cpu().numpy(), predicted_class))
+
         return steering_angle
 
     def apply_control(self, steering):
@@ -434,6 +438,13 @@ class CarlaSteering:
                 print(f"Self-driving ended. Recorded {len(self_driving_distances)} distances.")
             else:
                 print("Self-driving ended. No distances saved due to invalid output directory or no distances recorded.")
+
+        # Save prediction data to .npy file
+        if self.prediction_data:
+            npy_filename = os.path.splitext(self.distances_file)[0] + '.npy'
+            np.save(os.path.join(output_dir, npy_filename), self.prediction_data)
+            print(f"Saved prediction data to {os.path.join(output_dir, npy_filename)}")
+                            
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run CARLA self-driving simulation.')
