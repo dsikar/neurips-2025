@@ -394,19 +394,23 @@ class CarlaSteering:
                     distance_to_waypoint = vehicle_location.distance(self.waypoints[current_wp_idx].transform.location)
                     print(f"Distance to waypoint {current_wp_idx}: {distance_to_waypoint:.4f}")
                     if distance_to_waypoint < 1.5:
-                        segment_length = np.sqrt(np.dot(
-                            np.array([self.waypoints[current_wp_idx].transform.location.x - self.waypoints[current_wp_idx - 1].transform.location.x,
-                                    self.waypoints[current_wp_idx].transform.location.y - self.waypoints[current_wp_idx - 1].transform.location.y]),
-                            np.array([self.waypoints[current_wp_idx].transform.location.x - self.waypoints[current_wp_idx - 1].transform.location.x,
-                                    self.waypoints[current_wp_idx].transform.location.y - self.waypoints[current_wp_idx - 1].transform.location.y])
-                        ))
-                        if segment_length > 1.0:  # Only compute perpendicular if segment is long enough
+                        segment_length = np.sqrt((self.waypoints[current_wp_idx].transform.location.x - self.waypoints[current_wp_idx - 1].transform.location.x)**2 +
+                                                (self.waypoints[current_wp_idx].transform.location.y - self.waypoints[current_wp_idx - 1].transform.location.y)**2)
+                        if segment_length > 1.0:
                             path_distance = self.get_perpendicular_distance(vehicle_location, self.waypoints[current_wp_idx - 1], self.waypoints[current_wp_idx])
                         else:
-                            path_distance = distance_to_waypoint  # Fallback to straight-line distance
-                        self_driving_distances.append(path_distance)
+                            path_distance = self_driving_distances[-1]
+                            print(f"Warning: Segment length {segment_length:.2f}m <= 1.0m, using previous path distance")
+                        self_driving_distances.append(path_distance)  # Append before invasion check
                         print(f"Reached waypoint {current_wp_idx + 1}/{len(self.waypoints)}, path distance: {path_distance:.4f}")
-                        current_wp_idx += 1                    
+                        # Failsafe for lane invasion
+                        if path_distance > 0.85:
+                            log_filename = os.path.splitext(self.distances_file)[0] + '.log'
+                            with open(log_filename, 'a') as log_file:
+                                log_file.write(f"Lane invasion detected at waypoint {current_wp_idx + 1} with path distance {path_distance:.4f} at {time.strftime('%Y%m%d_%H%M%S')}\n")
+                            print(f"Lane invasion detected at waypoint {current_wp_idx + 1}, stopping simulation...")
+                            raise Exception("Lane invasion detected, simulation terminated")
+                        current_wp_idx += 1                   
                 
                 except queue.Empty:
                     print("Warning: Frame missed!")
