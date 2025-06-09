@@ -127,14 +127,15 @@ from config_utils import load_config
 import argparse
 
 class CarlaSteering:
-    def __init__(self, config, model_path='model.pth', distances_file='self_driving_distances_05.txt', bins=15, noise_type=None, intensity=None):
+    def __init__(self, config, model_path='model.pth', distances_file='self_driving_distances_05.txt', bins=15, noise_type=None, intensity=None, network='cnn', dataset_balance='balanced'):
         self.config = config
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         # self.distances_file = distances_file
         self.bins = bins
         self.noise_type = noise_type  # Added for noise support
         self.intensity = intensity    # Added for noise intensity
-        self.distances_file = f"self_driving_distances_{self.bins}_bins_{'no_noise' if self.noise_type is None else self.noise_type}_{int(self.intensity) if self.intensity is not None else 0}_{time.strftime('%Y%m%d_%H%M%S')}.txt"
+        # self.distances_file = f"self_driving_distances_{self.bins}_bins_{'no_noise' if self.noise_type is None else self.noise_type}_{int(self.intensity) if self.intensity is not None else 0}_{time.strftime('%Y%m%d_%H%M%S')}.txt"
+        self.distances_file = f"self_driving_{bins}_{network}_{dataset_balance}_{'no' if noise_type is None else noise_type[:3]}_{int(intensity) if intensity is not None else 0}_{time.strftime('%y%m%d_%H%M')}.txt"
         # Define steering values based on bins
         self.steering_values = {
             3: [-0.065, 0.0, 0.065],
@@ -444,7 +445,7 @@ class CarlaSteering:
             npy_filename = os.path.splitext(self.distances_file)[0] + '.npy'
             np.save(os.path.join(output_dir, npy_filename), self.prediction_data)
             print(f"Saved prediction data to {os.path.join(output_dir, npy_filename)}")
-                            
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run CARLA self-driving simulation.')
@@ -461,6 +462,10 @@ if __name__ == '__main__':
                         help='Type of noise to apply (default: None)')
     parser.add_argument('--intensity', type=int, choices=range(1, 100), default=None,
                         help='Intensity level of noise (1-10) (default: None)')
+    parser.add_argument('--network', type=str, choices=['cnn', 'vit'], default='cnn',
+                        help='Network type (cnn or vit) (default: cnn)')
+    parser.add_argument('--dataset_balance', type=str, choices=['balanced', 'unbalanced'], default='balanced',
+                        help='Dataset balance (balanced or unbalanced) (default: balanced)')    
     args = parser.parse_args()
 
     try:
@@ -472,13 +477,15 @@ if __name__ == '__main__':
         print(f"An error occurred: {e}")
 
 # Example usage:
-# For 5 bins with pepper noise at intensity 2
+# ClsCNN5binBalanced pepper_noise 10%
 # python 08-self-driving-from-config-noise.py \
 # --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_06.json \
 # --model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_5_bins_balanced_20250529-211142.pth \
 # --bins 5 \
 # --noise_type pepper_noise \
-# --intensity 2
+# --intensity 10 \
+# --network cnn \
+# --dataset_balance balanced
 
 # For 15 bins
 # python 08-self-driving-from-config_05_15_bins.py \
