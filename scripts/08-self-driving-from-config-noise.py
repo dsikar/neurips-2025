@@ -15,6 +15,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import sys
 import os
+import time  # Add this import at the top of the file with other imports
+
 # Add the src/ directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 import carla_helpers as helpers
@@ -128,7 +130,8 @@ class CarlaSteering:
     def __init__(self, config, model_path='model.pth', distances_file='self_driving_distances_05.txt', bins=15, noise_type=None, intensity=None):
         self.config = config
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.distances_file = distances_file
+        # self.distances_file = distances_file
+        self.distances_file = f"self_driving_distances_{self.bins}_bins_{'no_noise' if self.noise_type is None else self.noise_type}_{int(self.intensity) if self.intensity is not None else 0}_{time.strftime('%Y%m%d_%H%M%S')}.txt"
         self.bins = bins
         self.noise_type = noise_type  # Added for noise support
         self.intensity = intensity    # Added for noise intensity
@@ -233,7 +236,7 @@ class CarlaSteering:
         # Add CPU-based pepper noise
         if hasattr(self, 'noise_type') and self.noise_type and hasattr(self, 'intensity') and self.intensity is not None:
             if self.noise_type == 'pepper_noise':
-                noise_prob = self.intensity * 0.1  # 10%-100% of pixels
+                noise_prob = self.intensity * 0.01  # 1%-100% of pixels
                 mask = np.random.random(resized.shape) < noise_prob
                 noisy_img = resized.copy()
                 noisy_img[mask] = np.random.randint(0, 2, mask.sum()) * 255  # 0 or 255
@@ -357,12 +360,12 @@ class CarlaSteering:
                     self.display_images()
                     
                     vehicle_location = self.vehicle.get_transform().location
-                    # distance_to_waypoint = vehicle_location.distance(self.waypoints[current_wp_idx].transform.location)
-                    # if distance_to_waypoint < 0.5:
-                    #     path_distance = self.get_perpendicular_distance(vehicle_location, self.waypoints[current_wp_idx - 1], self.waypoints[current_wp_idx])
-                    #     self_driving_distances.append(path_distance)
-                    #     print(f"Reached waypoint {current_wp_idx + 1}/{len(self.waypoints)}, path distance: {path_distance:.4f}")
-                    #     current_wp_idx += 1
+                    distance_to_waypoint = vehicle_location.distance(self.waypoints[current_wp_idx].transform.location)
+                    if distance_to_waypoint < 2.0:
+                        path_distance = self.get_perpendicular_distance(vehicle_location, self.waypoints[current_wp_idx - 1], self.waypoints[current_wp_idx])
+                        self_driving_distances.append(path_distance)
+                        print(f"Reached waypoint {current_wp_idx + 1}/{len(self.waypoints)}, path distance: {path_distance:.4f}")
+                        current_wp_idx += 1
                     
                 except queue.Empty:
                     print("Warning: Frame missed!")
@@ -400,7 +403,7 @@ if __name__ == '__main__':
     # Add noise-related arguments
     parser.add_argument('--noise_type', type=str, choices=['pepper_noise'], default=None,
                         help='Type of noise to apply (default: None)')
-    parser.add_argument('--intensity', type=int, choices=range(1, 11), default=None,
+    parser.add_argument('--intensity', type=int, choices=range(1, 100), default=None,
                         help='Intensity level of noise (1-10) (default: None)')
     args = parser.parse_args()
 
