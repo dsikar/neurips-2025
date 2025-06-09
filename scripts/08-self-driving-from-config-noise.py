@@ -432,6 +432,16 @@ class CarlaSteering:
                             with open(log_filename, 'a') as log_file:
                                 log_file.write(f"Lane invasion detected at waypoint {current_wp_idx + 1} with path distance {path_distance:.4f} at {time.strftime('%Y%m%d_%H%M%S')}\n")
                             print(f"Lane invasion detected at waypoint {current_wp_idx + 1}, stopping simulation...")
+                            # Save distances and prediction data before terminating
+                            if output_dir and self_driving_distances:
+                                with open(os.path.join(output_dir, self.distances_file), 'w') as f:
+                                    for dist in self_driving_distances:
+                                        f.write(f"{dist:.4f}\n")
+                                print(f"Saved {len(self_driving_distances)} distances to {os.path.join(output_dir, self.distances_file)}")
+                            if self.prediction_data:
+                                npy_filename = os.path.splitext(self.distances_file)[0] + '.npy'
+                                np.save(os.path.join(output_dir, npy_filename), self.prediction_data)
+                                print(f"Saved prediction data to {os.path.join(output_dir, npy_filename)}")
                             raise Exception("Lane invasion detected, simulation terminated")
                         current_wp_idx += 1                   
                 
