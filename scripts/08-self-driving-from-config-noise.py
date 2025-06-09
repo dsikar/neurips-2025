@@ -26,57 +26,41 @@ class NVIDIANet(nn.Module):
     def __init__(self, num_outputs=15, dropout_rate=0.1):
         super(NVIDIANet, self).__init__()
         
-        # Convolutional layers
         self.conv1 = nn.Conv2d(3, 24, kernel_size=5, stride=2)
         self.conv2 = nn.Conv2d(24, 32, kernel_size=5, stride=2)
         self.conv3 = nn.Conv2d(32, 48, kernel_size=5, stride=2)
         self.conv4 = nn.Conv2d(48, 64, kernel_size=3)
         self.conv5 = nn.Conv2d(64, 64, kernel_size=3)
         
-        # Dropout layer
         self.dropout = nn.Dropout(p=dropout_rate)
         
-        # Dense layers (adjustable final layer based on num_outputs)
         self.flatten = nn.Flatten()
         self.fc1 = nn.Linear(1152, 100)
         self.fc2 = nn.Linear(100, 50)
         self.fc3 = nn.Linear(50, 10)
-        self.fc4 = nn.Linear(10, num_outputs)  # Dynamic output size
+        self.fc4 = nn.Linear(10, num_outputs)
         
     def forward(self, x):
-        # Input normalization
         x = x / 255.0
-        
-        # Convolutional layers with ELU activation and dropout
         x = F.elu(self.conv1(x))
         x = self.dropout(x)
-        
         x = F.elu(self.conv2(x))
         x = self.dropout(x)
-        
         x = F.elu(self.conv3(x))
         x = self.dropout(x)
-        
         x = F.elu(self.conv4(x))
         x = self.dropout(x)
-        
         x = F.elu(self.conv5(x))
         x = self.dropout(x)
-        
-        # Flatten and dense layers
         x = self.flatten(x)
         x = F.elu(self.fc1(x))
         x = F.elu(self.fc2(x))
         x = F.elu(self.fc3(x))
-        x = self.fc4(x)  # Output logits for num_outputs classes
-        
-        # Apply softmax to get probabilities
+        x = self.fc4(x)
         x = F.softmax(x, dim=1)
-        
         return x
 
 def load_model(model, model_path, device='cuda'):
-    """Load a saved model"""
     checkpoint = torch.load(model_path, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device)
@@ -105,9 +89,6 @@ def set_spectator_camera_following_car(world, vehicle):
     return spectator
 
 def draw_permanent_waypoint_lines(world, waypoints, color=carla.Color(0, 255, 0), thickness=2, life_time=0):
-    """
-    Draw permanent lines linking every waypoint on the road.
-    """
     for i in range(len(waypoints) - 1):
         wp1 = waypoints[i]
         wp2 = waypoints[i + 1]
@@ -133,10 +114,9 @@ class CarlaSteering:
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.distances_file = distances_file
         self.bins = bins
-        self.noise_type = noise_type  # None or 'brightness' or 'gaussian_noise'
-        self.intensity = intensity    # None or 1-10
+        self.noise_type = noise_type
+        self.intensity = intensity
 
-        # Define steering values based on bins
         self.steering_values = {
             3: [-0.065, 0.0, 0.065],
             5: [-0.065, -0.015, 0.0, 0.015, 0.065],
@@ -156,7 +136,6 @@ class CarlaSteering:
         settings.fixed_delta_seconds = sim_config['fixed_delta_seconds_self_drive']
         self.world.apply_settings(settings)
         
-        # Initialize model with dynamic number of outputs
         self.model = NVIDIANet(num_outputs=len(self.steering_values[self.bins]))
         self.model = load_model(self.model, model_path, self.device)
         
@@ -176,17 +155,17 @@ class CarlaSteering:
         self.resize_width = img_proc_config['resize_width']
         self.resize_height = img_proc_config['resize_height']
         
-        self.image_queue = queue.Queue()
+        self.image_queue = queue.Queue(maxsize=1)  # Limit queue to 1 to prevent buildup
         self.current_image = None
+        self.display_counter = 0  # For controlling display frequency
         
     def setup_vehicle(self):
-        """Spawn and setup the ego vehicle with sensors"""
         sim_config = self.config['simulation']
         self.client.load_world(sim_config['town'])
         self.world = self.client.get_world()
         
         vehicle_config = self.config['vehicle']
-        self.waypoints = helpers.get_town04_figure8_waypoints(self.world, lane_id=-2)
+        self.waypoints = helpers.get_town04_figure8_waypoints(self.world, lane_id=-2, waypoint_distance=vehicle_config['waypoint_distance'])
         print(f"Loaded {len(self.waypoints)} waypoints.")
         
         first_waypoint = self.waypoints[0]
@@ -212,26 +191,27 @@ class CarlaSteering:
             carla.Location(x=pos['x'], y=pos['y'], z=pos['z']),
             carla.Rotation(pitch=rot['pitch'], yaw=rot['yaw'], roll=rot['roll'])
         )
-        self.camera = world.spawn_actor(camera_bp, camera_spawn_point, attach_to=self.vehicle)
+        self.camera = self.world.spawn_actor(camera_bp, camera_spawn_point, attach_to=self.vehicle)
         self.camera.listen(self.process_image)
         
     def process_image(self, image):
-        """
-        Callback to process images from CARLA camera
-        Convert image from BGR to RGB and apply noise if specified
-        """
         img = np.array(image.raw_data).reshape(self.image_height, self.image_width, 4)
-        img = img[:, :, :3]  # Remove alpha channel
-        img = img[:, :, [2, 1, 0]]  # Convert BGR to RGB
+        img = img[:, :, :3]
+        img = img[:, :, [2, 1, 0]]
         
-        # Apply noise if type and intensity are provided
-        if self.noise_type and self.intensity is not None:
-            img = noise_utils.apply_noise(img, self.noise_type, self.intensity)
+        # Debug, check if applying noise is holding back the queue
+        # if self.noise_type and self.intensity is not None:
+        #     img = noise_utils.apply_noise(img, self.noise_type, self.intensity)
         
+        # If queue is full, drop the oldest frame to prevent lag
+        if self.image_queue.full():
+            try:
+                self.image_queue.get_nowait()
+            except queue.Empty:
+                pass
         self.image_queue.put(img)
         
     def preprocess_image(self, img):
-        """Preprocess image for neural network"""
         self.original_img = img.copy()
         
         cropped = img[self.crop_top:self.crop_bottom, :]
@@ -246,47 +226,46 @@ class CarlaSteering:
         return torch.from_numpy(yuv).float().unsqueeze(0).to(self.device)
         
     def display_images(self):
-        """Display original and preprocessed images side by side"""
-        if hasattr(self, 'original_img') and hasattr(self, 'preprocessed_img'):
-            display_height = 264
-            aspect_ratio = self.original_img.shape[1] / self.original_img.shape[0]
-            display_width = int(display_height * aspect_ratio)
-            original_resized = cv2.resize(self.original_img, (display_width, display_height))
-            
-            preprocessed_display = cv2.resize(self.preprocessed_img, (self.image_width, 264))
-            
-            canvas_width = display_width + self.image_width + 20
-            canvas = np.zeros((display_height, canvas_width, 3), dtype=np.uint8)
-            
-            canvas[:, :display_width] = original_resized
-            canvas[:, display_width+20:] = preprocessed_display
-            
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(canvas, 'Original Camera Feed', (10, 30), font, 1, (255, 255, 255), 2)
-            cv2.putText(canvas, 'Neural Network Input (YUV)', (display_width+30, 30), font, 1, (255, 255, 255), 2)
-            
-            cv2.imshow('Camera Views', canvas)
-            cv2.waitKey(1)
+        if not (hasattr(self, 'original_img') and hasattr(self, 'preprocessed_img')):
+            return
+        
+        display_height = 264
+        aspect_ratio = self.original_img.shape[1] / self.original_img.shape[0]
+        display_width = int(display_height * aspect_ratio)
+        
+        # Pre-allocate canvas once
+        if not hasattr(self, 'canvas') or self.canvas.shape[1] != display_width + self.image_width + 20:
+            self.canvas = np.zeros((display_height, display_width + self.image_width + 20, 3), dtype=np.uint8)
+        
+        original_resized = cv2.resize(self.original_img, (display_width, display_height))
+        preprocessed_display = cv2.resize(self.preprocessed_img, (self.image_width, 264))
+        
+        self.canvas[:, :display_width] = original_resized
+        self.canvas[:, display_width+20:] = preprocessed_display
+        
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(self.canvas, 'Original Camera Feed', (10, 30), font, 1, (255, 255, 255), 2)
+        cv2.putText(self.canvas, 'Neural Network Input (YUV)', (display_width+30, 30), font, 1, (255, 255, 255), 2)
+        
+        cv2.imshow('Camera Views', self.canvas)
+        cv2.waitKey(1)  # Non-blocking, minimal delay
         
     def predict_steering(self, image):
-        """Make steering prediction from image"""
         with torch.no_grad():
-            class_probs = self.model(image)  # Shape: (1, num_outputs)
-            predicted_class = torch.argmax(class_probs, dim=1).item()  # Get index of highest probability
-            steering_angle = self.steering_values[self.bins][predicted_class]  # Map index to steering value
-            
+            class_probs = self.model(image)
+            predicted_class = torch.argmax(class_probs, dim=1).item()
+            steering_angle = self.steering_values[self.bins][predicted_class]
+        
         steering_angle = np.clip(steering_angle, -self.max_steering_angle, self.max_steering_angle)
         self.last_steering = steering_angle
-        
         return steering_angle
 
     def apply_control(self, steering):
-        """Apply control to vehicle with neural network steering and proportional speed control"""
         control = carla.VehicleControl()
         control.steer = steering
 
         current_velocity = self.vehicle.get_velocity()
-        speed = 3.6 * math.sqrt(current_velocity.x**2 + current_velocity.y**2)  # km/h
+        speed = 3.6 * math.sqrt(current_velocity.x**2 + current_velocity.y**2)
         speed_error = self.target_speed - speed
         
         if speed_error > 0:
@@ -299,7 +278,6 @@ class CarlaSteering:
         self.vehicle.apply_control(control)
 
     def find_nearest_waypoint(self, vehicle_location, waypoints):
-        """Find the index of the nearest waypoint."""
         min_dist = float('inf')
         nearest_idx = 0
         for i, wp in enumerate(waypoints):
@@ -310,7 +288,6 @@ class CarlaSteering:
         return nearest_idx, min_dist
     
     def get_perpendicular_distance(self, vehicle_location, wp1, wp2):
-        """Calculate perpendicular distance from vehicle_location to line segment wp1-wp2."""
         p = np.array([vehicle_location.x, vehicle_location.y])
         a = np.array([wp1.transform.location.x, wp1.transform.location.y])
         b = np.array([wp2.transform.location.x, wp2.transform.location.y])
@@ -325,7 +302,6 @@ class CarlaSteering:
         return np.linalg.norm(p - closest)
 
     def run(self):
-        """Main control loop with waypoint distance computation, exiting after all waypoints."""
         try:
             output_dir = self.config['output']['directory']
             os.makedirs(output_dir, exist_ok=True)
@@ -333,8 +309,8 @@ class CarlaSteering:
             print(f"Error setting up output directory: {e}")
             output_dir = None
 
-        self_driving_distances = [0.0]  # W_1 distance
-        current_wp_idx = 1  # Start at W_2
+        self_driving_distances = [0.0]
+        current_wp_idx = 1
 
         try:
             self.setup_vehicle()
@@ -352,15 +328,19 @@ class CarlaSteering:
                     steering = self.predict_steering(processed_img)
                     self.apply_control(steering)
                     set_spectator_camera_following_car(self.world, self.vehicle)
-                    self.display_images()
                     
-                    vehicle_location = self.vehicle.get_transform().location
-                    distance_to_waypoint = vehicle_location.distance(self.waypoints[current_wp_idx].transform.location)
-                    if distance_to_waypoint < 0.5:
-                        path_distance = self.get_perpendicular_distance(vehicle_location, self.waypoints[current_wp_idx - 1], self.waypoints[current_wp_idx])
-                        self_driving_distances.append(path_distance)
-                        print(f"Reached waypoint {current_wp_idx + 1}/{len(self.waypoints)}, path distance: {path_distance:.4f}")
-                        current_wp_idx += 1
+                    # Display every 5th frame to reduce overhead
+                    self.display_counter += 1
+                    if self.display_counter % 5 == 0:
+                        self.display_images()
+                    
+                    # vehicle_location = self.vehicle.get_transform().location
+                    # distance_to_waypoint = vehicle_location.distance(self.waypoints[current_wp_idx].transform.location)
+                    # if distance_to_waypoint < 0.5:
+                    #     path_distance = self.get_perpendicular_distance(vehicle_location, self.waypoints[current_wp_idx - 1], self.waypoints[current_wp_idx])
+                    #     self_driving_distances.append(path_distance)
+                    #     print(f"Reached waypoint {current_wp_idx + 1}/{len(self.waypoints)}, path distance: {path_distance:.4f}")
+                    #     current_wp_idx += 1
                     
                 except queue.Empty:
                     print("Warning: Frame missed!")
@@ -417,11 +397,41 @@ if __name__ == '__main__':
 # --distance_filename ClsCNN3bin_self_driving_distances.txt \
 # --bins 3
 
-# For 15 bins with Gaussian noise at intensity 4
+# ClsCNN5binBalanced
+# For 5 bins with Gaussian noise at intensity 3
 # python 08-self-driving-from-config-noise.py \
-# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_05.json \
-# --model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_15_bins_balanced_20250529-211117.pth \
-# --distance_filename ClsCNN15binBalanced_self_driving_distances.txt \
-# --bins 15 \
+# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_06.json \
+# --model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_5_bins_balanced_20250529-211142.pth \
+# --distance_filename ClsCNN5binBalanced_self_driving_gaussian_noise_3_distances.txt \
+# --bins 5 \
+# --noise_type gaussian_noise \
+# --intensity 3
+
+# ClsCNN5binBalanced
+# For 5 bins with Gaussian noise at intensity 4
+# python 08-self-driving-from-config-noise.py \
+# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_06.json \
+# --model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_5_bins_balanced_20250529-211142.pth \
+# --distance_filename ClsCNN5binBalanced_self_driving_gaussian_noise_4_distances.txt \
+# --bins 5 \
 # --noise_type gaussian_noise \
 # --intensity 4
+
+# ClsCNN5binBalanced
+# For 5 bins with Gaussian noise at intensity 5
+# python 08-self-driving-from-config-noise.py \
+# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_06.json \
+# --model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_5_bins_balanced_20250529-211142.pth \
+# --distance_filename ClsCNN5binBalanced_self_driving_gaussian_noise_4_distances.txt \
+# --bins 5 \
+# --noise_type gaussian_noise \
+# --intensity 5
+
+# ClsCNN5binBalanced - no distance logging
+# For 5 bins with Gaussian noise at intensity 5
+# python 08-self-driving-from-config-noise.py \
+# --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_06.json \
+# --model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_5_bins_balanced_20250529-211142.pth \
+# --bins 5 \
+# --noise_type gaussian_noise \
+# --intensity 5
