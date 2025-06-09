@@ -178,7 +178,13 @@ class CarlaSteering:
         
         self.image_queue = queue.Queue()
         self.current_image = None
-        self.prediction_data = []  # List to store (softmax_output, predicted_class) tuples
+        from distance_metrics import DistanceMetrics
+        self.dm = DistanceMetrics(num_bins=256, val_range=(0, 255))  # Initialize DistanceMetrics
+        self.pre_noise_yuv = None  # Store current pre-noise YUV image
+        self.post_noise_yuv = None  # Store current post-noise YUV image
+        self.prediction_data = []  # Store (softmax, class, bhattacharyya, hist_inter, kl_div)
+        self.image_queue = queue.Queue()
+        self.current_image = None
         
     def setup_vehicle(self):
         """Spawn and setup the ego vehicle with sensors"""
@@ -233,17 +239,22 @@ class CarlaSteering:
         
         cropped = img[self.crop_top:self.crop_bottom, :]
         resized = cv2.resize(cropped, (self.resize_width, self.resize_height))
-        
-        # Add CPU-based pepper noise
+
+        # Store pre-noise YUV
+        self.pre_noise_yuv = cv2.cvtColor(resized, cv2.COLOR_RGB2YUV) 
+
+        # Apply CPU-based pepper noise to RGB, then convert to YUV
         if hasattr(self, 'noise_type') and self.noise_type and hasattr(self, 'intensity') and self.intensity is not None:
             if self.noise_type == 'pepper_noise':
                 noise_prob = self.intensity * 0.01  # 1%-100% of pixels
                 mask = np.random.random(resized.shape) < noise_prob
-                noisy_img = resized.copy()
-                noisy_img[mask] = np.random.randint(0, 2, mask.sum()) * 255  # 0 or 255
-                resized = noisy_img
+                noisy_rgb = resized.copy()
+                noisy_rgb[mask] = np.random.randint(0, 2, mask.sum()) * 255  # 0 or 255
+                self.post_noise_yuv = cv2.cvtColor(noisy_rgb, cv2.COLOR_RGB2YUV)
+        else:
+            self.post_noise_yuv = self.pre_noise_yuv.copy()  # No noise case
         
-        yuv = cv2.cvtColor(resized, cv2.COLOR_RGB2YUV)
+        yuv = self.post_noise_yuv.copy()  # Use noisy YUV for neural network
         self.preprocessed_img = yuv.copy()
         
         yuv = yuv.transpose((2, 0, 1))
@@ -284,9 +295,16 @@ class CarlaSteering:
         steering_angle = np.clip(steering_angle, -self.max_steering_angle, self.max_steering_angle)
         self.last_steering = steering_angle
         
-        # Store prediction data (convert tensor to numpy for storage)
-        self.prediction_data.append((class_probs.cpu().numpy(), predicted_class))
-
+        # Compute distances if images are available
+        if self.pre_noise_yuv is not None and self.post_noise_yuv is not None:
+            distances = self.dm.get_distances(self.pre_noise_yuv, self.post_noise_yuv)
+            bhattacharyya = distances['Bhattacharyya']
+            hist_intersection = distances['HistogramIntersection']
+            kl_divergence = distances['KLDivergence']
+            
+            # Store prediction data
+            self.prediction_data.append((class_probs.cpu().numpy(), predicted_class, bhattacharyya, hist_intersection, kl_divergence))
+        
         return steering_angle
 
     def apply_control(self, steering):
