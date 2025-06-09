@@ -131,11 +131,10 @@ class CarlaSteering:
         self.config = config
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         # self.distances_file = distances_file
-        self.distances_file = f"self_driving_distances_{self.bins}_bins_{'no_noise' if self.noise_type is None else self.noise_type}_{int(self.intensity) if self.intensity is not None else 0}_{time.strftime('%Y%m%d_%H%M%S')}.txt"
         self.bins = bins
         self.noise_type = noise_type  # Added for noise support
         self.intensity = intensity    # Added for noise intensity
-
+        self.distances_file = f"self_driving_distances_{self.bins}_bins_{'no_noise' if self.noise_type is None else self.noise_type}_{int(self.intensity) if self.intensity is not None else 0}_{time.strftime('%Y%m%d_%H%M%S')}.txt"
         # Define steering values based on bins
         self.steering_values = {
             3: [-0.065, 0.0, 0.065],
@@ -314,6 +313,21 @@ class CarlaSteering:
                 nearest_idx = i
         return nearest_idx, min_dist
     
+    # def get_perpendicular_distance(self, vehicle_location, wp1, wp2):
+    #     """Calculate perpendicular distance from vehicle_location to line segment wp1-wp2."""
+    #     p = np.array([vehicle_location.x, vehicle_location.y])
+    #     a = np.array([wp1.transform.location.x, wp1.transform.location.y])
+    #     b = np.array([wp2.transform.location.x, wp2.transform.location.y])
+    #     ab = b - a
+    #     ap = p - a
+    #     ab_norm = np.dot(ab, ab)
+    #     if ab_norm == 0:
+    #         return np.linalg.norm(p - a)
+    #     t = np.dot(ap, ab) / ab_norm
+    #     t = max(0, min(1, t))
+    #     closest = a + t * ab
+    #     return np.linalg.norm(p - closest)
+
     def get_perpendicular_distance(self, vehicle_location, wp1, wp2):
         """Calculate perpendicular distance from vehicle_location to line segment wp1-wp2."""
         p = np.array([vehicle_location.x, vehicle_location.y])
@@ -322,12 +336,19 @@ class CarlaSteering:
         ab = b - a
         ap = p - a
         ab_norm = np.dot(ab, ab)
-        if ab_norm == 0:
+        
+        # Debug print to track positions
+        print(f"Vehicle: ({p[0]:.2f}, {p[1]:.2f}), WP1: ({a[0]:.2f}, {a[1]:.2f}), WP2: ({b[0]:.2f}, {b[1]:.2f}), ab_norm: {ab_norm:.2f}")
+        
+        if ab_norm < 1e-6:  # Handle near-zero segment length
             return np.linalg.norm(p - a)
+        
         t = np.dot(ap, ab) / ab_norm
-        t = max(0, min(1, t))
+        t = max(0, min(1, t))  # Clamp t to segment bounds
         closest = a + t * ab
-        return np.linalg.norm(p - closest)
+        distance = np.linalg.norm(p - closest)
+        
+        return distance
 
     def run(self):
         """Main control loop with waypoint distance computation, exiting after all waypoints."""
@@ -359,13 +380,22 @@ class CarlaSteering:
                     set_spectator_camera_following_car(self.world, self.vehicle)
                     self.display_images()
                     
+                    # vehicle_location = self.vehicle.get_transform().location
+                    # distance_to_waypoint = vehicle_location.distance(self.waypoints[current_wp_idx].transform.location)
+                    # if distance_to_waypoint < 2.0:
+                    #     path_distance = self.get_perpendicular_distance(vehicle_location, self.waypoints[current_wp_idx - 1], self.waypoints[current_wp_idx])
+                    #     self_driving_distances.append(path_distance)
+                    #     print(f"Reached waypoint {current_wp_idx + 1}/{len(self.waypoints)}, path distance: {path_distance:.4f}")
+                    #     current_wp_idx += 1
+
                     vehicle_location = self.vehicle.get_transform().location
                     distance_to_waypoint = vehicle_location.distance(self.waypoints[current_wp_idx].transform.location)
-                    if distance_to_waypoint < 2.0:
+                    print(f"Distance to waypoint {current_wp_idx}: {distance_to_waypoint:.4f}")
+                    if distance_to_waypoint < 1.5:
                         path_distance = self.get_perpendicular_distance(vehicle_location, self.waypoints[current_wp_idx - 1], self.waypoints[current_wp_idx])
                         self_driving_distances.append(path_distance)
                         print(f"Reached waypoint {current_wp_idx + 1}/{len(self.waypoints)}, path distance: {path_distance:.4f}")
-                        current_wp_idx += 1
+                        current_wp_idx += 1                    
                     
                 except queue.Empty:
                     print("Warning: Frame missed!")
