@@ -337,10 +337,12 @@ class CarlaSteering:
         ap = p - a
         ab_norm = np.dot(ab, ab)
         
-        # Debug print to track positions
-        print(f"Vehicle: ({p[0]:.2f}, {p[1]:.2f}), WP1: ({a[0]:.2f}, {a[1]:.2f}), WP2: ({b[0]:.2f}, {b[1]:.2f}), ab_norm: {ab_norm:.2f}")
+        # Debug print to track positions and segment length
+        print(f"Vehicle: ({p[0]:.2f}, {p[1]:.2f}), WP1: ({a[0]:.2f}, {a[1]:.2f}), WP2: ({b[0]:.2f}, {b[1]:.2f}), ab_norm: {ab_norm:.2f}, "
+            f"Segment Length: {np.sqrt(ab_norm):.2f}m")
         
-        if ab_norm < 1e-6:  # Handle near-zero segment length
+        if ab_norm < 1.0:  # Skip if segment is too short
+            print(f"Warning: Short segment detected (length {np.sqrt(ab_norm):.2f}m), using distance to WP1")
             return np.linalg.norm(p - a)
         
         t = np.dot(ap, ab) / ab_norm
@@ -392,11 +394,20 @@ class CarlaSteering:
                     distance_to_waypoint = vehicle_location.distance(self.waypoints[current_wp_idx].transform.location)
                     print(f"Distance to waypoint {current_wp_idx}: {distance_to_waypoint:.4f}")
                     if distance_to_waypoint < 1.5:
-                        path_distance = self.get_perpendicular_distance(vehicle_location, self.waypoints[current_wp_idx - 1], self.waypoints[current_wp_idx])
+                        segment_length = np.sqrt(np.dot(
+                            np.array([self.waypoints[current_wp_idx].transform.location.x - self.waypoints[current_wp_idx - 1].transform.location.x,
+                                    self.waypoints[current_wp_idx].transform.location.y - self.waypoints[current_wp_idx - 1].transform.location.y]),
+                            np.array([self.waypoints[current_wp_idx].transform.location.x - self.waypoints[current_wp_idx - 1].transform.location.x,
+                                    self.waypoints[current_wp_idx].transform.location.y - self.waypoints[current_wp_idx - 1].transform.location.y])
+                        ))
+                        if segment_length > 1.0:  # Only compute perpendicular if segment is long enough
+                            path_distance = self.get_perpendicular_distance(vehicle_location, self.waypoints[current_wp_idx - 1], self.waypoints[current_wp_idx])
+                        else:
+                            path_distance = distance_to_waypoint  # Fallback to straight-line distance
                         self_driving_distances.append(path_distance)
                         print(f"Reached waypoint {current_wp_idx + 1}/{len(self.waypoints)}, path distance: {path_distance:.4f}")
                         current_wp_idx += 1                    
-                    
+                
                 except queue.Empty:
                     print("Warning: Frame missed!")
                     
