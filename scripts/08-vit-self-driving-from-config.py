@@ -253,14 +253,14 @@ class CarlaSteering:
                     img = self.current_image
                     self.current_image = None
                     
-                    # Preprocess image to set self.original_img for display
+                    # Preprocess image to set self.original_img for display, nb yuv returned is not being used by vit
                     self.preprocess_image(img)
                     
                     # Save image for external processing
                     self.frame_count += 1
                     image_filename = f"frame_{self.frame_count:06d}.jpg"
                     image_path = self.image_dir / image_filename
-                    cv2.imwrite(str(image_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+                    cv2.imwrite(str(image_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR)) # nb original image written, not yuv
                     print(f"Generated {image_filename} for prediction")
                     
                     if not self.awaiting_prediction:
