@@ -488,8 +488,8 @@ if __name__ == '__main__':
     # Add noise-related arguments
     parser.add_argument('--noise_type', type=str, choices=['pepper_noise'], default=None,
                         help='Type of noise to apply (default: None)')
-    parser.add_argument('--intensity', type=int, choices=range(1, 100), default=None,
-                        help='Intensity level of noise (1-10) (default: None)')
+    parser.add_argument('--intensity', type=int, choices=range(0, 100), default=None,
+                        help='Intensity level of noise (0-100) (default: None)')
     parser.add_argument('--network', type=str, choices=['cnn', 'vit'], default='cnn',
                         help='Network type (cnn or vit) (default: cnn)')
     parser.add_argument('--dataset_balance', type=str, choices=['balanced', 'unbalanced'], default='balanced',
