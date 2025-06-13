@@ -44,11 +44,14 @@ Check the scripts directory for numbered examples showing the workflow from data
 ## 📝 Citation
 If you use this code in your research, please cite our paper:
 ```
-@article{selfdriving2025,
-  title={Provisional Title},
-  author={Authors},
-  journal={Conference/Journal},
-  year={2025}
+@misc{sikar2025explorationssoftmaxspaceknowing,
+      title={Explorations of the Softmax Space: Knowing When the Neural Network Doesn't Know}, 
+      author={Daniel Sikar and Artur d'Avila Garcez and Tillman Weyde},
+      year={2025},
+      eprint={2502.00456},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2502.00456}, 
 }
 ```
 
