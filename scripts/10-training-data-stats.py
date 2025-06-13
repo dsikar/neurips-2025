@@ -47,3 +47,13 @@ plt.xlabel('Steering Angle')
 plt.ylabel('Frequency')
 plt.grid(True, alpha=0.3)
 plt.show()
+# save the histogram as an image file
+plt.savefig('steering_angle_distribution_carla_dataset_640x480_01.png')
+# 3. Save the statistics to a text file 
+stats_file = 'steering_angle_stats_carla_dataset_640x480_01.txt'
+with open(stats_file, 'w') as f:
+    f.write(f"Mean: {mean_angle:.4f}\n")
+    f.write(f"Standard Deviation: {std_angle:.4f}\n")
+    f.write(f"Variance: {variance_angle:.4f}\n")
+    f.write(f"Minimum: {min_angle:.4f}\n")
+    f.write(f"Maximum: {max_angle:.4f}\n")

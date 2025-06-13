@@ -532,7 +532,7 @@ class CarlaSteering:
                             steering = self.get_latest_prediction(image_filename)
                             if steering is not None:
                                 break
-                            time.sleep(0.2)
+                            time.sleep(0.1)
                         
                         if steering is not None:
                             self.awaiting_prediction = False
@@ -578,7 +578,7 @@ class CarlaSteering:
                 self.vehicle.destroy()
             
             if output_dir and self_driving_distances:
-                with open(os.path.join(output_dir, 'self_driving_distances_03.txt'), 'w') as f:
+                with open(os.path.join(output_dir, 'self_driving_distances_15_bins_vit.txt'), 'w') as f:
                     for dist in self_driving_distances:
                         f.write(f"{dist:.4f}\n")
                 print(f"Self-driving ended. Recorded {len(self_driving_distances)} distances.")

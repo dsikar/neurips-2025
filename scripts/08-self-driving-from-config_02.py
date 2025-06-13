@@ -265,6 +265,7 @@ class CarlaSteering:
         
         # Convert to YUV
         yuv = cv2.cvtColor(resized, cv2.COLOR_RGB2YUV)
+
         self.preprocessed_img = yuv.copy()
         
         # Prepare for PyTorch
@@ -350,41 +351,7 @@ class CarlaSteering:
         t = max(0, min(1, t))
         closest = a + t * ab
         return np.linalg.norm(p - closest)    
-            
-    # def run(self):
-    #     """Main control loop"""
-    #     try:
-    #         self.setup_vehicle()
-    #         print("Vehicle and sensors initialized. Starting control loop...")
-
-    #         while True:
-    #             while not self.image_queue.empty():
-    #                 _ = self.image_queue.get()
-                
-    #             self.world.tick()
-                
-    #             try:
-    #                 img = self.image_queue.get(timeout=0.1)
-    #                 processed_img = self.preprocess_image(img)
-    #                 steering = self.predict_steering(processed_img)
-    #                 self.apply_control(steering)
-    #                 set_spectator_camera_following_car(self.world, self.vehicle)
-    #                 self.display_images()
-                    
-    #             except queue.Empty:
-    #                 print("Warning: Frame missed!")
-                    
-    #     except KeyboardInterrupt:
-    #         print("Stopping...")
-    #     finally:
-    #         settings = self.world.get_settings()
-    #         settings.synchronous_mode = False
-    #         self.world.apply_settings(settings)
-            
-    #         if hasattr(self, 'camera'):
-    #             self.camera.destroy()
-    #         if hasattr(self, 'vehicle'):
-    #             self.vehicle.destroy()
+        
 
     def run(self):
         """Main control loop with waypoint distance computation, exiting after all waypoints."""

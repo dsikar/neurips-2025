@@ -46,9 +46,10 @@ def main(args):
     # Compute centroids
     centroids = compute_centroids(args.filename, args.bins)
     
-    # Generate output filename
-    output_file = os.path.join(os.path.dirname(args.filename), f"{args.bins}_bins_centroids.npy")
-    
+    # Construct output filename
+    output_file = os.path.join(os.path.dirname(args.filename), 
+                             f"{args.bins}_bins_{args.network}_centroids_{args.balanced}.npy")
+
     # Save centroids
     np.save(output_file, centroids)
     print(f"Saved centroids to {output_file}")
@@ -60,11 +61,16 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Compute centroids from softmax outputs for correct predictions.')
-    parser.add_argument('--filename', type=str, default='/home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/15_bin_softmax_outputs.npy',
+    parser.add_argument('--filename', type=str, 
+                        default='/home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/15_bin_softmax_outputs.npy',
                         help='Path to the softmax outputs .npy file (default: 15_bin_softmax_outputs.npy)')
     parser.add_argument('--bins', type=int, default=15, choices=[3, 5, 15],
                         help='Number of steering bins (3, 5, or 15; default: 15)')
-    
+    parser.add_argument('--network', type=str, default='cnn',
+                        help='Network architecture used (default: cnn)')
+    parser.add_argument('--balanced', type=str, default='unbalanced', choices=['balanced', 'unbalanced'],
+                        help='Whether to name balanced or unbalanced following dataset model was trained on (default: unbalanced)')
+
     args = parser.parse_args()
 
     try:
@@ -73,22 +79,108 @@ if __name__ == '__main__':
         print(f"An error occurred: {e}")
 
 """
-Examples:
+#######
+# CNN #
+#######
 
-# 15 bins
+##############
+# unbalanced #
+##############
+#Examples:
+# Checklist:
+# 1. dataset is unbalanced - carla_dataset_640x480_05
+# 2. cnn softmax outputs - 15_bin_softmax_outputs.npy
+
+# 15 bins, cnn
 python 14-generate-centroids.py \
-    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/15_bin_softmax_outputs.npy\
-    --bins 15
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/15_bin_softmax_outputs.npy \
+    --bins 15 \
+    --network cnn
 
-# 5 bins
+# 5 bins, cnn
 python 14-generate-centroids.py \
-    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06/5_bin_softmax_outputs.npy\
-    --bins 5
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06/5_bin_softmax_outputs.npy \
+    --bins 5 \
+    --network cnn
 
-# 3 bins
+# 3 bins, cnn
 python 14-generate-centroids.py \
-    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bin_softmax_outputs.npy\
-    --bins 3
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bin_softmax_outputs.npy \
+    --bins 3 \
+    --network cnn
 
+############
+# balanced #
+############
 
-"""        
+# 15 bins, cnn
+python 14-generate-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05_balanced/15_bin_balanced_softmax_outputs.npy \
+    --bins 15 \
+    --network cnn \
+    --balanced balanced
+
+# 5 bins, cnn
+python 14-generate-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06_balanced/5_bin_balanced_softmax_outputs.npy \
+    --bins 5 \
+    --network cnn \
+    --balanced balanced
+
+# 3 bins, cnn
+python 14-generate-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins_balanced/3_bin_balanced_softmax_outputs.npy \
+    --bins 3 \
+    --network cnn \
+    --balanced balanced
+
+#######
+# ViT #
+#######
+
+##############
+# unbalanced #
+##############
+#Examples:
+# Checklist:
+# 1. dataset is unbalanced - carla_dataset_640x480_05
+# 2. vit softmax outputs - 15_bin_vit_softmax_outputs.npy 
+
+# 15 bins, vit
+python 14-generate-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/15_bin_vit_softmax_outputs.npy \
+    --bins 15 \
+    --network vit
+
+# 5 bins, vit
+python 14-generate-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06/5_bin_vit_softmax_outputs.npy \
+    --bins 5 \
+    --network vit
+# 3 bins, vit
+python 14-generate-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bin_vit_softmax_outputs.npy \
+    --bins 3 \
+    --network vit
+############
+# balanced #
+############
+# 15 bins, vit
+python 14-generate-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05_balanced/15_bin_vit_softmax_outputs_balanced.npy \
+    --bins 15 \
+    --network vit \
+    --balanced balanced
+# 5 bins, vit
+python 14-generate-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06_balanced/5_bin_vit_softmax_outputs_balanced.npy \
+    --bins 5 \
+    --network vit \
+    --balanced balanced
+# 3 bins, vit
+python 14-generate-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins_balanced/3_bin_vit_softmax_outputs_balanced.npy \
+    --bins 3 \
+    --network vit \
+    --balanced balanced 
+"""

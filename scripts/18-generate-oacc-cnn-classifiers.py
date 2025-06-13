@@ -99,9 +99,9 @@ def preprocess_image(img_path):
     # Load image
     img = np.array(Image.open(img_path).convert("RGB"))
     
-    # Image processing parameters (from CARLA script config)
-    crop_top = 200
-    crop_bottom = 400
+    # --- CRITICAL FIX: MATCH TRAINING SCRIPT'S CROPPING ---
+    crop_top = 210    # Original: 200
+    crop_bottom = 480 # Original: 400
     resize_width = 200
     resize_height = 66
     

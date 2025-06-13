@@ -78,6 +78,8 @@ if __name__ == "__main__":
     main()
 
     """
+    # Extract ground truth steering angles from .jpg files in a specified directory.
+    # Example usage:
     $ python scripts/11-extract-steering-angles.py \
         --input-dir carla_dataset_640x480_01 \
         --output-dir steering_angles_output \ 

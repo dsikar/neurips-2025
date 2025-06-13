@@ -418,8 +418,7 @@ class CarlaSteering:
                 self.vehicle.destroy()
             
             if output_dir and self_driving_distances:
-                filename = self.distances_file + '.txt'
-                with open(os.path.join(output_dir, filename), 'w') as f:
+                with open(os.path.join(output_dir, self.distances_file), 'w') as f:
                     for dist in self_driving_distances:
                         f.write(f"{dist:.4f}\n")
                 print(f"Self-driving ended. Recorded {len(self_driving_distances)} distances.")
@@ -432,8 +431,8 @@ if __name__ == '__main__':
                         help='Path to the configuration JSON file (default: config.json)')
     parser.add_argument('--model', type=str, default='model.pth', 
                         help='Path to the trained model file (default: model.pth)')
-    parser.add_argument('--distance_filename', type=str, default='self_driving_distances_06', 
-                        help='Path to the distances file (default: self_driving_distances_06)')
+    parser.add_argument('--distance_filename', type=str, default='self_driving_distances_06.txt', 
+                        help='Path to the distances file (default: self_driving_distances_06.txt)')
     args = parser.parse_args()
 
     try:
@@ -444,10 +443,10 @@ if __name__ == '__main__':
         print(f"An error occurred: {e}")
 
 # Example usage:
-# NB We are rerunning the same trained model on a different dataset, where the ground truth was recorded ()
-# python 08-self-driving-from-config_05.py \
+# python 08-self-driving-from-config_06_3_bins.py \
 # --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_05.json \
-# --model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_20250523-210036.pth
+# --model /home/daniel/git/neurips-2025/scripts/best_quantized_steering_model_3_bins_balanced_20250529-212449.pth \
+# --distance_filename ClsCNN3binBalanced_self_driving_distances.txt
 
 # python 08-self-driving-from-config_05.py \
 # --config /home/daniel/git/neurips-2025/scripts/config_640x480_segmented_05.json \

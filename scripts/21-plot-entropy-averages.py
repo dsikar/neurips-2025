@@ -117,7 +117,7 @@ def plot_entropy_charts(args):
 \\begin{{figure}}[H]
     \\centering
     \\includegraphics[width=1\\linewidth]{{Figures/Results/{png_base_name.replace('.npy', '.png')}}}
-    \\caption{{Average Entropy for Correct and Incorrect Steering Angles Predictions for the {args.bins}-Bin {args.network()} Model on a {args.balanced()} Dataset, with Error Bars Indicating Standard Deviation.}}
+    \\caption{{Average Entropy for Correct and Incorrect Steering Angles Predictions for the {args.bins}-Bin {args.network} Model on a {args.balanced} Dataset, with Error Bars Indicating Standard Deviation.}}
     \\label{{fig:{args.bins}_bins_{args.network}_entropy_{args.balanced}}}
 \\end{{figure}}
 """
@@ -222,3 +222,62 @@ python 21-plot-entropy-averages.py \
     --network vit \
     --balanced balanced 
 """        
+
+# Alternatively:
+
+"""
+#!/bin/bash
+
+# Exit on error
+set -e
+
+# Activate the Python environment
+source ~/.pyenv/versions/carla-env/bin/activate
+
+# Base directory for datasets
+BASE_DIR="/home/daniel/git/neurips-2025/scripts"
+
+# Log file for errors
+LOG_FILE="entropy_plot_errors.log"
+echo "Starting entropy plot generation at $(date)" > $LOG_FILE
+
+# Array of configurations
+CONFIGS=(
+    "carla_dataset_640x480_07_3_bins/3_bins_cnn_softmax_dist_unbalanced.npy 3 cnn unbalanced"
+    "carla_dataset_640x480_06/5_bins_cnn_softmax_dist_unbalanced.npy 5 cnn unbalanced"
+    "carla_dataset_640x480_05/15_bins_cnn_softmax_dist_unbalanced.npy 15 cnn unbalanced"
+    "carla_dataset_640x480_07_3_bins_balanced/3_bins_cnn_softmax_dist_balanced.npy 3 cnn balanced"
+    "carla_dataset_640x480_06_balanced/5_bins_cnn_softmax_dist_balanced.npy 5 cnn balanced"
+    "carla_dataset_640x480_05_balanced/15_bins_cnn_softmax_dist_balanced.npy 15 cnn balanced"
+    "carla_dataset_640x480_07_3_bins/3_bins_vit_softmax_dist_unbalanced.npy 3 vit unbalanced"
+    "carla_dataset_640x480_06/5_bins_vit_softmax_dist_unbalanced.npy 5 vit unbalanced"
+    "carla_dataset_640x480_05/15_bins_vit_softmax_dist_unbalanced.npy 15 vit unbalanced"
+    "carla_dataset_640x480_07_3_bins_balanced/3_bins_vit_softmax_dist_balanced.npy 3 vit balanced"
+    "carla_dataset_640x480_06_balanced/5_bins_vit_softmax_dist_balanced.npy 5 vit balanced"
+    "carla_dataset_640x480_05_balanced/15_bins_vit_softmax_dist_balanced.npy 15 vit balanced"
+)
+
+# Loop through configurations
+for config in "${CONFIGS[@]}"; do
+    # Split config into components
+    read filename bins network balanced <<< "$config"
+    full_path="${BASE_DIR}/${filename}"
+    
+    echo "Processing: bins=$bins, network=$network, balanced=$balanced" | tee -a $LOG_FILE
+    if [ ! -f "$full_path" ]; then
+        echo "Error: File $full_path does not exist" | tee -a $LOG_FILE
+        continue
+    fi
+    
+    # Run the Python script
+    python 21-plot-entropy-averages.py \
+        --filename "$full_path" \
+        --bins "$bins" \
+        --network "$network" \
+        --balanced "$balanced" >> $LOG_FILE 2>&1 || {
+        echo "Failed to process $full_path" | tee -a $LOG_FILE
+    }
+done
+
+echo "Completed entropy plot generation at $(date)" | tee -a $LOG_FILE
+"""

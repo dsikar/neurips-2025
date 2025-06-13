@@ -13,8 +13,7 @@
       "model": "vehicle.tesla.model3",
       "spawn_height_offset": 2.0,
       "spawn_road_id": 42,
-      "spawn_lane_id": -2,
-      "waypoint_distance": 3.0
+      "spawn_lane_id": -2      
     },
     "camera": {
       "image_width": 640,
@@ -38,6 +37,8 @@
         "resize_height": 66	
       },    
     "output": {
-      "directory": "carla_dataset_640x480_06"
+      "directory": "carla_dataset_640x480_04",
+      "image_dir": "/home/daniel/dev/claude-dr/transformer-regressor/input_dir",
+      "prediction_file": "/home/daniel/dev/claude-dr/transformer-regressor/output_dir/prediction.txt"
     }
   }

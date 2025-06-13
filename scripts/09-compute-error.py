@@ -35,3 +35,8 @@ mae = compute_path_error(ground_truth_file, self_driving_file)
 # Run 01, CNN x Ground Truth, segmented with fiducials
 # Path Distance MAE: 0.0295 meters
 # Path Distance MSE: 0.0026, RMSE: 0.0514 meters
+
+print("Run 02, CNN x Ground Truth, segmented without fiducials")
+ground_truth_file = 'carla_dataset_640x480_02/ground_truth_distances_02.txt'
+self_driving_file = 'carla_dataset_640x480_02/self_driving_distances_02.txt'
+mae = compute_path_error(ground_truth_file, self_driving_file)

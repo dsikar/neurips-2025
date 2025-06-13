@@ -67,9 +67,11 @@ class NVIDIANet(nn.Module):
         
         return x
 
-def load_model(model, model_path, device='cuda'):
+def load_model(model_path, num_outputs, device='cuda'):
     """Load a saved model"""
-    checkpoint = torch.load(model_path, map_location=device)
+    model = NVIDIANet(num_outputs=num_outputs)
+    # Fix: Add weights_only=False to handle numpy objects in checkpoint
+    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device)
     model.eval()
@@ -270,7 +272,7 @@ class CarlaSteering:
 
         # ADD THIS LINE - Save the preprocessed image for display
         self.preprocessed_img = yuv.copy()   
-             
+
         # save yuv for display
         cv2.imwrite("inference_debug_yuv_inference.jpg", yuv)  # Uncomment to save for debugging
         

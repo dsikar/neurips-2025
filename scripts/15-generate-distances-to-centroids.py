@@ -44,6 +44,10 @@ def compute_distances(softmax_file, centroids_file, num_bins):
     
     return output_data
 
+import numpy as np
+import argparse
+import os
+
 def main(args):
     """Load softmax outputs and centroids, compute distances, and save to file."""
     # Validate bins
@@ -55,7 +59,8 @@ def main(args):
     
     # Generate output filename
     output_dir = os.path.dirname(args.filename)
-    output_file = os.path.join(output_dir, f"{args.bins}_bin_softmax_outputs_with_distances.npy")
+    output_file = os.path.join(output_dir, 
+                              f"{args.bins}_bins_{args.network}_softmax_dist_{args.balanced}.npy")
     
     # Save output
     np.save(output_file, output_data)
@@ -69,12 +74,19 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Compute distances from softmax outputs to true and predicted class centroids.')
-    parser.add_argument('--filename', type=str, default='/home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bin_softmax_outputs.npy',
+    parser.add_argument('--filename', type=str, 
+                        default='/home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bin_softmax_outputs.npy',
                         help='Path to the softmax outputs .npy file (default: 3_bin_softmax_outputs.npy)')
-    parser.add_argument('--centroids', type=str, default='/home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bins_centroids.npy',
-                        help='Path to the centroids .npy file (default: 3_bins_centroids.npy)')
+    parser.add_argument('--centroids', type=str, 
+                        default='/home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bins_cnn_centroids_unbalanced.npy',
+                        help='Path to the centroids .npy file (default: 3_bins_cnn_centroids_unbalanced.npy)')
     parser.add_argument('--bins', type=int, default=3, choices=[3, 5, 15],
                         help='Number of steering bins (3, 5, or 15; default: 3)')
+    parser.add_argument('--network', type=str, default='cnn',
+                        help='Network architecture used (default: cnn)')
+    parser.add_argument('--balanced', type=str, default='unbalanced', 
+                        choices=['balanced', 'unbalanced'],
+                        help='Whether the dataset is balanced or unbalanced (default: unbalanced)')
     
     args = parser.parse_args()
 
@@ -86,21 +98,98 @@ if __name__ == '__main__':
 """
 Examples:
 
-# 15 bins
+# CNN
+# unbalanced 
+# 15 bins, cnn
 python 15-generate-distances-to-centroids.py \
-    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/15_bin_softmax_outputs.npy\
-    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/15_bins_centroids.npy \
-    --bins 15
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/15_bin_softmax_outputs.npy \
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/15_bins_cnn_centroids_unbalanced.npy \
+    --bins 15 \
+    --network cnn
 
-# 5 bins
+# 5 bins, cnn
 python 15-generate-distances-to-centroids.py \
     --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06/5_bin_softmax_outputs.npy \
-    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06/5_bins_centroids.npy \
-    --bins 5
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06/5_bins_cnn_centroids_unbalanced.npy \
+    --bins 5 \
+    --network cnn
 
-# 3 bins
+# 3 bins, cnn
 python 15-generate-distances-to-centroids.py \
     --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bin_softmax_outputs.npy \
-    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bins_centroids.npy \
-    --bins 3
-"""        
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bins_cnn_centroids_unbalanced.npy \
+    --bins 3 \
+    --network cnn
+
+############
+# balanced #
+############
+
+# 15 bins, cnn
+python 15-generate-distances-to-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05_balanced/15_bin_balanced_softmax_outputs.npy \
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05_balanced/15_bins_cnn_centroids_balanced.npy \
+    --bins 15 \
+    --network cnn \
+    --balanced balanced
+
+# 5 bins, cnn
+python 15-generate-distances-to-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06_balanced/5_bin_balanced_softmax_outputs.npy \
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06_balanced/5_bins_cnn_centroids_balanced.npy \
+    --bins 5 \
+    --network cnn \
+    --balanced balanced
+
+# 3 bins, cnn
+python 15-generate-distances-to-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins_balanced/3_bin_balanced_softmax_outputs.npy \
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins_balanced/3_bins_cnn_centroids_balanced.npy \
+    --bins 3 \
+    --network cnn \
+    --balanced balanced
+
+# ViT 
+# unbalanced
+# 15 bins, vit
+python 15-generate-distances-to-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/15_bin_vit_softmax_outputs.npy \
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05/15_bins_vit_centroids_unbalanced.npy \
+    --bins 15 \
+    --network vit
+# 5 bins, vit
+python 15-generate-distances-to-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06/5_bin_vit_softmax_outputs.npy \
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06/5_bins_vit_centroids_unbalanced.npy \
+    --bins 5 \
+    --network vit
+# 3 bins, vit
+python 15-generate-distances-to-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bin_vit_softmax_outputs.npy \
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins/3_bins_vit_centroids_unbalanced.npy \
+    --bins 3 \
+    --network vit
+
+# balanced
+# 15 bins, vit
+python 15-generate-distances-to-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05_balanced/15_bin_vit_softmax_outputs_balanced.npy \
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_05_balanced/15_bins_vit_centroids_balanced.npy \
+    --bins 15 \
+    --network vit \
+    --balanced balanced
+# 5 bins, vit
+python 15-generate-distances-to-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06_balanced/5_bin_vit_softmax_outputs_balanced.npy \
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_06_balanced/5_bins_vit_centroids_balanced.npy \
+    --bins 5 \
+    --network vit \
+    --balanced balanced
+# 3 bins, vit
+python 15-generate-distances-to-centroids.py \
+    --filename /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins_balanced/3_bin_vit_softmax_outputs_balanced.npy \
+    --centroids /home/daniel/git/neurips-2025/scripts/carla_dataset_640x480_07_3_bins_balanced/3_bins_vit_centroids_balanced.npy \
+    --bins 3 \
+    --network vit \
+    --balanced balanced
+"""
